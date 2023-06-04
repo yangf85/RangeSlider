@@ -1,0 +1,28 @@
+﻿<Window x:Class="WpfApp2.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="clr-namespace:WpfApp2"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        Title="MainWindow"
+        Width="800"
+        Height="450"
+        mc:Ignorable="d">
+    <Grid>
+        <StackPanel Orientation="Vertical">
+            <local:RangeSlider x:Name="RangeSlider" Height="30" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           HorizontalAlignment="Center"
+                           Text="{Binding ElementName=RangeSlider, Path=LowerValue}" />
+                <TextBlock Grid.Column="1"
+                           HorizontalAlignment="Center"
+                           Text="{Binding ElementName=RangeSlider, Path=UpperValue}" />
+            </Grid>
+        </StackPanel>
+    </Grid>
+</Window>
