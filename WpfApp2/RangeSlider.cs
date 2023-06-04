@@ -90,12 +90,27 @@ namespace WpfApp2
 
         public static readonly DependencyProperty MaximumProperty =
             DependencyProperty.Register(nameof(Maximum), typeof(double), typeof(RangeSlider),
-                new FrameworkPropertyMetadata(100d, FrameworkPropertyMetadataOptions.AffectsMeasure));
+                new FrameworkPropertyMetadata(100d, FrameworkPropertyMetadataOptions.AffectsMeasure, OnMaximumChanged, OnCoerceMaximum));
 
         public double Maximum
         {
             get => (double)GetValue(MaximumProperty);
             set => SetValue(MaximumProperty, value);
+        }
+
+        private static object OnCoerceMaximum(DependencyObject d, object baseValue)
+        {
+            var slider = (RangeSlider)baseValue;
+            var num = (double)baseValue;
+            if (num < slider.Minimum)
+            {
+                throw new ArgumentException("maximum must be >= minimum ");
+            }
+            return baseValue;
+        }
+
+        private static void OnMaximumChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
         }
 
         #endregion Maximum
@@ -104,12 +119,27 @@ namespace WpfApp2
 
         public static readonly DependencyProperty MinimumProperty =
             DependencyProperty.Register(nameof(Minimum), typeof(double), typeof(RangeSlider),
-                new FrameworkPropertyMetadata(1d, FrameworkPropertyMetadataOptions.AffectsMeasure));
+                new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsMeasure, OnMinimumChanged, OnCoerceMinimum));
 
         public double Minimum
         {
             get => (double)GetValue(MinimumProperty);
             set => SetValue(MinimumProperty, value);
+        }
+
+        private static object OnCoerceMinimum(DependencyObject d, object baseValue)
+        {
+            var slider = (RangeSlider)baseValue;
+            var num = (double)baseValue;
+            if (num > slider.Maximum)
+            {
+                throw new ArgumentException("minimum must be <= maximum");
+            }
+            return baseValue;
+        }
+
+        private static void OnMinimumChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
         }
 
         #endregion Minimum
@@ -118,7 +148,7 @@ namespace WpfApp2
 
         public static readonly DependencyProperty LowerValueProperty =
             DependencyProperty.Register(nameof(LowerValue), typeof(double), typeof(RangeSlider),
-                new FrameworkPropertyMetadata(25d, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnLowerValueChanged, OnCoerceLowerValue));
+                new FrameworkPropertyMetadata(OnLowerValueChanged, OnCoerceLowerValue));
 
         public double LowerValue
         {
@@ -149,13 +179,43 @@ namespace WpfApp2
             slider.RaiseEvent(args);
         }
 
+        private void UpdateThumbPosition(ThumbKind thumbKind, double number)
+        {
+            if (!CanUpdate())
+            {
+                return;
+            }
+
+            if (Orientation == Orientation.Horizontal)
+            {
+                var total = _StartRegion.ActualWidth + _MiddleRegion.ActualWidth + _EndRegion.ActualWidth;
+                var interval = Maximum - Minimum;
+                switch (thumbKind)
+                {
+                    case ThumbKind.Start:
+                        _StartRegion.Width = interval / total * number;
+
+                        break;
+
+                    case ThumbKind.End:
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            else
+            {
+            }
+        }
+
         #endregion LowerValue
 
         #region UpperValue
 
         public static readonly DependencyProperty UpperValueProperty =
             DependencyProperty.Register(nameof(UpperValue), typeof(double), typeof(RangeSlider),
-                new FrameworkPropertyMetadata(75d, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnUpperValueChanged, OnCoerceUpperValue));
+                new FrameworkPropertyMetadata(OnUpperValueChanged, OnCoerceUpperValue));
 
         public double UpperValue
         {
@@ -171,7 +231,7 @@ namespace WpfApp2
 
             if (num < slider.LowerValue)
             {
-                return slider.LowerValue;
+                //throw new ArgumentException("upperValue must be >= lowerValue ");
             }
             if (num > slider.Maximum)
             {
@@ -220,15 +280,39 @@ namespace WpfApp2
 
         private void StartRegion_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (_StartThumb == null || _EndThumb == null || _StartRegion == null || _MiddleRegion == null || _EndRegion == null)
+            if (!CanUpdate())
             {
                 return;
             }
 
-            var total = ActualWidth - _StartThumb.ActualWidth - _EndRegion.ActualWidth;
             if (e.WidthChanged)
             {
-                LowerValue = e.NewSize.Width / total * (Maximum - Minimum);
+                var total = ActualWidth - _StartThumb.ActualWidth - _EndThumb.ActualWidth;
+                LowerValue = _StartRegion.ActualWidth / total * (Maximum - Minimum);
+            }
+            else if (e.HeightChanged)
+            {
+                var total = ActualHeight - _StartThumb.ActualHeight - _EndThumb.ActualHeight;
+                LowerValue = _StartRegion.ActualHeight / total * (Maximum - Minimum);
+            }
+        }
+
+        private void EndRegion_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (!CanUpdate())
+            {
+                return;
+            }
+
+            if (e.WidthChanged)
+            {
+                var total = ActualWidth - _StartThumb.ActualWidth - _EndThumb.ActualWidth;
+                UpperValue = (_StartRegion.ActualWidth + _MiddleRegion.ActualWidth) / total * (Maximum - Minimum);
+            }
+            else if (e.HeightChanged)
+            {
+                var total = ActualHeight - _StartThumb.ActualHeight - _EndThumb.ActualHeight;
+                UpperValue = (_StartRegion.ActualHeight + _MiddleRegion.ActualHeight) / total * (Maximum - Minimum);
             }
         }
 
@@ -243,7 +327,13 @@ namespace WpfApp2
 
             if (_StartRegion != null)
             {
+                _StartRegion.SizeChanged -= StartRegion_SizeChanged;
                 _StartRegion.SizeChanged += StartRegion_SizeChanged;
+            }
+            if (_EndRegion != null)
+            {
+                _EndRegion.SizeChanged -= EndRegion_SizeChanged;
+                _EndRegion.SizeChanged += EndRegion_SizeChanged;
             }
         }
 
@@ -275,7 +365,7 @@ namespace WpfApp2
 
         #endregion UpperValueChanged
 
-        #region DragEvent
+        #region HandleDragEvent
 
         private static void OnDragStartedEvent(object sender, DragStartedEventArgs e)
         {
@@ -307,15 +397,12 @@ namespace WpfApp2
 
         private void OnThumbDragDelta(DragDeltaEventArgs e)
         {
+            if (!CanUpdate())
+            {
+                return;
+            }
+
             var thumb = e.OriginalSource as Thumb;
-            if (thumb == null)
-            {
-                return;
-            }
-            if (_StartRegion == null || _MiddleRegion == null || _EndRegion == null)
-            {
-                return;
-            }
 
             var offset = 0d;
             if (Orientation == Orientation.Horizontal)
@@ -331,6 +418,11 @@ namespace WpfApp2
             {
                 if (e.HorizontalChange > 0)
                 {
+                    if (_MiddleRegion.ActualWidth <= 0)
+                    {
+                        return;
+                    }
+
                     _StartRegion.Width += e.HorizontalChange;
                 }
                 else if (e.HorizontalChange < 0)
@@ -347,10 +439,21 @@ namespace WpfApp2
             {
                 if (e.HorizontalChange > 0)
                 {
+                    if (_EndRegion.ActualWidth - offset < 0)
+                    {
+                        _EndRegion.Width = 0;
+                        return;
+                    }
+
                     _EndRegion.Width -= e.HorizontalChange;
                 }
                 else if (e.HorizontalChange < 0)
                 {
+                    if (_MiddleRegion.ActualWidth <= 0)
+                    {
+                        return;
+                    }
+
                     _EndRegion.Width += Math.Abs(e.HorizontalChange);
                 }
             }
@@ -360,6 +463,31 @@ namespace WpfApp2
         {
         }
 
-        #endregion DragEvent
+        #endregion HandleDragEvent
+
+        private bool CanUpdate()
+        {
+            return _StartThumb != null && _EndThumb != null && _StartRegion != null && _MiddleRegion != null && _EndRegion != null;
+        }
+
+        private double CalculateTotalSize(Orientation orientation)
+        {
+            if (!CanUpdate())
+            {
+                return -1;
+            }
+            switch (orientation)
+            {
+                case Orientation.Horizontal:
+                    return _StartRegion.ActualWidth + _MiddleRegion.ActualWidth + _EndRegion.ActualWidth;
+
+                case Orientation.Vertical:
+
+                    return _StartRegion.ActualHeight + _MiddleRegion.ActualHeight + _EndRegion.ActualHeight;
+
+                default:
+                    return -1;
+            }
+        }
     }
 }

@@ -10,7 +10,8 @@
         mc:Ignorable="d">
     <Grid>
         <StackPanel Orientation="Vertical">
-            <local:RangeSlider x:Name="RangeSlider" Height="30" />
+            <local:RangeSlider x:Name="RangeSlider"
+                               Height="30" />
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
