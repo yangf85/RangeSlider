@@ -11,7 +11,12 @@
     <Grid>
         <StackPanel Orientation="Vertical">
             <local:RangeSlider x:Name="RangeSlider"
-                               Height="30" />
+                               Height="30"
+                               Margin="30,0"
+                               LowerValue="0"
+                               Maximum="100"
+                               Minimum="0"
+                               UpperValue="60" />
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -24,6 +29,9 @@
                            HorizontalAlignment="Center"
                            Text="{Binding ElementName=RangeSlider, Path=UpperValue}" />
             </Grid>
+            <Slider Maximum="100"
+                    Minimum="-100"
+                    Value="-25" />
         </StackPanel>
     </Grid>
 </Window>
