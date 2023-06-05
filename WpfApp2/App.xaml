@@ -30,7 +30,6 @@
                     </Grid.ColumnDefinitions>
                     <RepeatButton x:Name="PART_StartRegion"
                                   Grid.Column="0"
-                                  Width="0"
                                   Background="DarkGreen" />
                     <Thumb x:Name="PART_StartThumb"
                            Grid.Column="1"
@@ -43,7 +42,6 @@
                            Style="{StaticResource RangeSlider.ThumbStyle}" />
                     <RepeatButton x:Name="PART_EndRegion"
                                   Grid.Column="4"
-                                  Width="0"
                                   Background="DarkOrange" />
                 </Grid>
                 <TickBar x:Name="BottomTickBar"

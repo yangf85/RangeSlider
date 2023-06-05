@@ -172,10 +172,7 @@ namespace WpfApp2
             {
                 throw new ArgumentException("lowerValue must be <= upperValue");
             }
-            if (num < slider.Minimum)
-            {
-                throw new ArgumentException("lowerValue must be >= minimum");
-            }
+
             return num;
         }
 
@@ -210,10 +207,7 @@ namespace WpfApp2
             {
                 throw new ArgumentException("upperValue must be >= lowerValue ");
             }
-            if (num > slider.Maximum)
-            {
-                throw new ArgumentException("upperValue must be <= maximum ");
-            }
+
             return num;
         }
 
