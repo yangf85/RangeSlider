@@ -5,9 +5,16 @@
              StartupUri="MainWindow.xaml">
     <Application.Resources>
 
+        <Style x:Key="RangeSlider.RepeatButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="IsTabStop" Value="False" />
+        </Style>
+
         <Style x:Key="RangeSlider.ThumbStyle" TargetType="Thumb">
             <Setter Property="Width" Value="30" />
             <Setter Property="Height" Value="30" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="IsTabStop" Value="False" />
         </Style>
 
         <ControlTemplate x:Key="BasicHorizontalRangeSliderControlTemplate" TargetType="local:RangeSlider">
@@ -30,19 +37,22 @@
                     </Grid.ColumnDefinitions>
                     <RepeatButton x:Name="PART_StartRegion"
                                   Grid.Column="0"
-                                  Background="DarkGreen" />
+                                  Background="DarkGreen"
+                                  Style="{StaticResource RangeSlider.RepeatButtonStyle}" />
                     <Thumb x:Name="PART_StartThumb"
                            Grid.Column="1"
                            Style="{StaticResource RangeSlider.ThumbStyle}" />
                     <RepeatButton x:Name="PART_MiddleRegion"
                                   Grid.Column="2"
-                                  Background="DarkBlue" />
+                                  Background="DarkBlue"
+                                  Style="{StaticResource RangeSlider.RepeatButtonStyle}" />
                     <Thumb x:Name="PART_EndThumb"
                            Grid.Column="3"
                            Style="{StaticResource RangeSlider.ThumbStyle}" />
                     <RepeatButton x:Name="PART_EndRegion"
                                   Grid.Column="4"
-                                  Background="DarkOrange" />
+                                  Background="DarkOrange"
+                                  Style="{StaticResource RangeSlider.RepeatButtonStyle}" />
                 </Grid>
                 <TickBar x:Name="BottomTickBar"
                          Grid.Row="2"

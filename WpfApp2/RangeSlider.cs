@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,6 +16,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace WpfApp2
 {
@@ -66,11 +68,91 @@ namespace WpfApp2
 
         private System.Windows.Controls.Primitives.RepeatButton _EndRegion;
 
+        #region Delay
+
+        public static readonly DependencyProperty DelayProperty =
+            DependencyProperty.Register(nameof(Delay), typeof(int), typeof(RangeSlider), new PropertyMetadata(500, OnDelayChanged, OnCoerceDelay));
+
+        public int Delay
+        {
+            get => (int)GetValue(DelayProperty);
+            set => SetValue(DelayProperty, value);
+        }
+
+        private static void OnDelayChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var slider = (RangeSlider)d;
+            if (slider._StartRegion != null)
+            {
+                slider._StartRegion.Delay = (int)e.NewValue;
+            }
+            if (slider._MiddleRegion != null)
+            {
+                slider._MiddleRegion.Delay = (int)e.NewValue;
+            }
+            if (slider._EndRegion != null)
+            {
+                slider._EndRegion.Delay = (int)e.NewValue;
+            }
+        }
+
+        private static object OnCoerceDelay(DependencyObject d, object baseValue)
+        {
+            var num = (int)baseValue;
+            if (num < 0)
+            {
+                throw new ArgumentException("delay must be >=0");
+            }
+            return baseValue;
+        }
+
+        #region Interval
+
+        public static readonly DependencyProperty IntervalProperty =
+            DependencyProperty.Register(nameof(Interval), typeof(int), typeof(RangeSlider), new PropertyMetadata(30, OnIntervalChanged, OnCoerceInterval));
+
+        public int Interval
+        {
+            get => (int)GetValue(IntervalProperty);
+            set => SetValue(IntervalProperty, value);
+        }
+
+        private static void OnIntervalChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var slider = (RangeSlider)d;
+            if (slider._StartRegion != null)
+            {
+                slider._StartRegion.Interval = (int)e.NewValue;
+            }
+            if (slider._MiddleRegion != null)
+            {
+                slider._MiddleRegion.Interval = (int)e.NewValue;
+            }
+            if (slider._EndRegion != null)
+            {
+                slider._EndRegion.Interval = (int)e.NewValue;
+            }
+        }
+
+        private static object OnCoerceInterval(DependencyObject d, object baseValue)
+        {
+            var num = (int)baseValue;
+            if (num <= 0)
+            {
+                throw new ArgumentException("delay must be > 0");
+            }
+            return baseValue;
+        }
+
+        #endregion Interval
+
+        #endregion Delay
+
         #region Step
 
         public static readonly DependencyProperty StepProperty =
             DependencyProperty.Register(nameof(Step), typeof(double), typeof(RangeSlider),
-                new FrameworkPropertyMetadata(0.1d, OnStepChanged, OnCoerceStep));
+                new FrameworkPropertyMetadata(OnStepChanged, OnCoerceStep));
 
         public double Step
         {
@@ -81,9 +163,9 @@ namespace WpfApp2
         private static object OnCoerceStep(DependencyObject d, object baseValue)
         {
             var num = (double)baseValue;
-            if (num < 0)
+            if (num <= 0)
             {
-                throw new ArgumentException("step must >=0");
+                throw new ArgumentException("step must >0");
             }
             return num;
         }
@@ -111,6 +193,10 @@ namespace WpfApp2
             var slider = (RangeSlider)d;
             var num = (double)baseValue;
             if (num < slider.Minimum)
+            {
+                throw new ArgumentException("maximum must be >= minimum ");
+            }
+            if (num < slider.UpperValue)
             {
                 throw new ArgumentException("maximum must be >= minimum ");
             }
@@ -246,6 +332,36 @@ namespace WpfApp2
 
         #endregion TickPlacement
 
+        #region IsMoveToPoint
+
+        public static readonly DependencyProperty IsMoveToPointProperty =
+            DependencyProperty.Register(nameof(IsMoveToPoint), typeof(bool), typeof(RangeSlider), new PropertyMetadata(default(bool)));
+
+        public bool IsMoveToPoint
+        {
+            get => (bool)GetValue(IsMoveToPointProperty);
+            set => SetValue(IsMoveToPointProperty, value);
+        }
+
+        #endregion IsMoveToPoint
+
+        #region IsSnapToStep
+
+        public static readonly DependencyProperty IsSnapToStepProperty =
+            DependencyProperty.Register(nameof(IsSnapToStep), typeof(bool), typeof(RangeSlider), new PropertyMetadata(OnIsSnapToStep));
+
+        public bool IsSnapToStep
+        {
+            get => (bool)GetValue(IsSnapToStepProperty);
+            set => SetValue(IsSnapToStepProperty, value);
+        }
+
+        private static void OnIsSnapToStep(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+        }
+
+        #endregion IsSnapToStep
+
         #region Override
 
         public override void OnApplyTemplate()
@@ -256,6 +372,18 @@ namespace WpfApp2
             _StartRegion = GetTemplateChild(PART_StartRegion) as System.Windows.Controls.Primitives.RepeatButton;
             _MiddleRegion = GetTemplateChild(PART_MiddleRegion) as System.Windows.Controls.Primitives.RepeatButton;
             _EndRegion = GetTemplateChild(PART_EndRegion) as System.Windows.Controls.Primitives.RepeatButton;
+            if (_StartRegion != null)
+            {
+                _StartRegion.Click += StartRegion_Click;
+            }
+            if (_MiddleRegion != null)
+            {
+                _MiddleRegion.Click += MiddleRegion_Click;
+            }
+            if (_EndRegion != null)
+            {
+                _EndRegion.Click += EndRegion_Click;
+            }
         }
 
         #endregion Override
@@ -338,11 +466,13 @@ namespace WpfApp2
             if (thumb == _StartThumb)
             {
                 LowerValue = Math.Max(Minimum, Math.Min(LowerValue + offset, UpperValue));
+
                 UpdateThumbPosition(ThumbKind.Start);
             }
             else if (thumb == _EndThumb)
             {
                 UpperValue = Math.Min(Maximum, Math.Max(UpperValue + offset, LowerValue));
+
                 UpdateThumbPosition(ThumbKind.End);
             }
         }
@@ -360,6 +490,19 @@ namespace WpfApp2
             return _StartThumb != null && _EndThumb != null && _StartRegion != null && _MiddleRegion != null && _EndRegion != null;
         }
 
+        private double RoundToNearest(double value, double step)
+        {
+            //对数字按照指定的步距处理
+            var digt = step.ToString(CultureInfo.InvariantCulture).IndexOf(".");
+            if (digt < 0)
+            {
+                digt = 0;
+            }
+
+            var n = Math.Round(Math.Round(value / step) * step, digt);
+            return n;
+        }
+
         private void UpdateThumbPosition(ThumbKind thumbKind)
         {
             if (!CanUpdate())
@@ -367,20 +510,27 @@ namespace WpfApp2
                 return;
             }
             var total = CalculateTotalSize(Orientation);
+
             double scale = 0d;
+
+            if (IsSnapToStep)
+            {
+                LowerValue = RoundToNearest(LowerValue, Step);
+                UpperValue = RoundToNearest(UpperValue, Step);
+            }
 
             if (Orientation == Orientation.Horizontal)
             {
                 switch (thumbKind)
                 {
                     case ThumbKind.Start:
-                        scale = MapValueToRange(LowerValue, Minimum, Maximum, 0d, 1d);
+                        scale = MapValueToRange(LowerValue, (Minimum, Maximum), (0d, 1d));
                         _StartRegion.Width = scale * total;
                         break;
 
                     case ThumbKind.End:
 
-                        scale = MapValueToRange(Maximum - UpperValue + Minimum, Minimum, Maximum, 0d, 1d);
+                        scale = MapValueToRange((Maximum - UpperValue + Minimum), (Minimum, Maximum), (0d, 1d));
                         _EndRegion.Width = scale * total;
                         break;
 
@@ -390,45 +540,60 @@ namespace WpfApp2
             }
             else
             {
-                //switch (thumbKind)
-                //{
-                //    case ThumbKind.Start:
-                //        _StartRegion.Height = value / scale * total;
-                //        break;
+                switch (thumbKind)
+                {
+                    case ThumbKind.Start:
+                        scale = MapValueToRange(LowerValue, (Minimum, Maximum), (0d, 1d));
+                        _StartRegion.Height = scale * total;
+                        break;
 
-                //    case ThumbKind.End:
-                //        _EndRegion.Height = (scale - value) / scale * total;
-                //        break;
+                    case ThumbKind.End:
 
-                //    default:
-                //        break;
-                //}
+                        scale = MapValueToRange((Maximum - UpperValue + Minimum), (Minimum, Maximum), (0d, 1d));
+                        _EndRegion.Height = scale * total;
+                        break;
+
+                    default:
+                        break;
+                }
             }
         }
 
-        private double MapValueToRange(double num, double originalMin, double originalMax, double targetMin, double targetMax)
+        private double MapValueToRange(double value, (double Min, double Max) original, (double Min, double Max) target)
         {
-            double relativePosition = (num - originalMin) / (originalMax - originalMin);
-            return targetMin + relativePosition * (targetMax - targetMin);
+            //计算value在原始范围original中的相对位置
+            var num = (value - original.Min) / (original.Max - original.Min);
+
+            //返回根据num计算value在目标范围target中的对应值
+            return target.Min + num * (target.Max - target.Min);
         }
 
-        private double CalculateTotalSize(Orientation orientation)
+        private double CalculateTotalSize(Orientation orientation, bool isAll = false)
         {
-            if (!CanUpdate())
-            {
-                return -1;
-            }
             switch (orientation)
             {
                 case Orientation.Horizontal:
-                    return _StartRegion.ActualWidth + _MiddleRegion.ActualWidth + _EndRegion.ActualWidth;
+                    if (isAll)
+                    {
+                        return _StartRegion.ActualWidth + _StartThumb.ActualWidth + _MiddleRegion.ActualWidth + _EndThumb.ActualWidth + _EndRegion.ActualWidth;
+                    }
+                    else
+                    {
+                        return _StartRegion.ActualWidth + _MiddleRegion.ActualWidth + _EndRegion.ActualWidth;
+                    }
 
                 case Orientation.Vertical:
-
-                    return _StartRegion.ActualHeight + _MiddleRegion.ActualHeight + _EndRegion.ActualHeight;
+                    if (isAll)
+                    {
+                        return _StartRegion.ActualHeight + _StartThumb.ActualHeight + _MiddleRegion.ActualHeight + _EndThumb.ActualHeight + _EndRegion.ActualHeight;
+                    }
+                    else
+                    {
+                        return _StartRegion.ActualHeight + _MiddleRegion.ActualHeight + _EndRegion.ActualHeight;
+                    }
 
                 default:
-                    return -1d;
+                    throw new NotImplementedException();
             }
         }
 
@@ -446,6 +611,62 @@ namespace WpfApp2
         private void RangeSlider_UpperValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             UpdateThumbPosition(ThumbKind.End);
+        }
+
+        private void StartRegion_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateValueFromPoint(Mouse.GetPosition(this), ThumbKind.Start);
+        }
+
+        private void MiddleRegion_Click(object sender, RoutedEventArgs e)
+        {
+            if (Mouse.LeftButton == MouseButtonState.Pressed)
+            {
+                UpdateValueFromPoint(Mouse.GetPosition(this), ThumbKind.Start);
+            }
+            else if (Mouse.RightButton == MouseButtonState.Pressed)
+            {
+                UpdateValueFromPoint(Mouse.GetPosition(this), ThumbKind.End);
+            }
+        }
+
+        private void UpdateValueFromPoint(Point pt, ThumbKind thumbKind)
+        {
+            var total = CalculateTotalSize(Orientation, true);
+            switch (thumbKind)
+            {
+                case ThumbKind.Start:
+                    if (IsMoveToPoint)
+                    {
+                        LowerValue = Minimum + (pt.X / total) * (Maximum - Minimum);
+                    }
+                    else
+                    {
+                        LowerValue -= Step;
+                    }
+                    break;
+
+                case ThumbKind.End:
+                    if (IsMoveToPoint)
+                    {
+                        UpperValue = Minimum + (pt.X / total) * (Maximum - Minimum);
+                    }
+                    else
+                    {
+                        UpperValue += Step;
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+
+            UpdateThumbPosition(thumbKind);
+        }
+
+        private void EndRegion_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateValueFromPoint(Mouse.GetPosition(this), ThumbKind.End);
         }
 
         #endregion Private
